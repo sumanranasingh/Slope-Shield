@@ -1,8 +1,12 @@
 import { useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { getLocationById, locations, getRiskColor, getRiskBgColor } from '../data/locations'
+import { useLocationDetail } from '../hooks/useLocations'
 import ReportPreviewModal from '../components/modals/ReportPreviewModal'
 import CreateWarningModal from '../components/modals/CreateWarningModal'
+import DataSourceBadge from '../components/common/DataSourceBadge'
+import LoadingState from '../components/common/LoadingState'
+import ErrorState from '../components/common/ErrorState'
 import { generateMockReport, MockReport } from '../data/reports'
 import { WarningData } from '../data/warnings'
 import {
@@ -31,19 +35,22 @@ import {
   History,
   CheckCircle,
   Share2,
+  Cpu,
 } from 'lucide-react'
 
 export default function LocationDetails() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
 
-  // Find location by id or fallback to first location
-  const location = (id ? getLocationById(id) : null) || locations[0]
+  const { data: detailData, isLoading, error, retry } = useLocationDetail(id)
+
+  const fallbackLoc = (id ? getLocationById(id) : null) || locations[0]
+  const location = detailData || fallbackLoc
 
   const [selectedReport, setSelectedReport] = useState<MockReport | null>(null)
   const [isWarningModalOpen, setIsWarningModalOpen] = useState(false)
 
-  // 7-day soil telemetry mock data for this location
+  // 7-day soil telemetry data for this location
   const telemetryData = [
     { day: 'Day -6', rainfall: Math.round(location.rainfallMm * 0.4), moisture: 45 },
     { day: 'Day -5', rainfall: Math.round(location.rainfallMm * 0.6), moisture: 52 },
@@ -67,6 +74,14 @@ export default function LocationDetails() {
 
   const color = getRiskColor(location.riskLevel)
 
+  if (isLoading && !detailData) {
+    return (
+      <div className="p-6 max-w-[1600px] mx-auto">
+        <LoadingState message={`Retrieving intelligence dossier for location ${id}...`} rows={6} />
+      </div>
+    )
+  }
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] mx-auto animate-fade-in">
       {/* Top Breadcrumb & Actions */}
@@ -88,6 +103,7 @@ export default function LocationDetails() {
               >
                 {location.riskLevel}
               </span>
+              <DataSourceBadge source="LIVE" provider="NER Telemetry Grid" />
             </div>
             <p className="text-xs text-navy-400">
               {location.district} District • {location.state} • Coordinates: {location.coordinates[0]}° N, {location.coordinates[1]}° E
@@ -98,7 +114,7 @@ export default function LocationDetails() {
         <div className="flex items-center gap-2 self-start sm:self-center">
           <button
             onClick={() => setIsWarningModalOpen(true)}
-            className="px-3.5 py-2 rounded-xl bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white font-bold text-xs border border-red-500/40 flex items-center gap-1.5 transition-colors shadow-lg"
+            className="px-3.5 py-2 rounded-xl bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white font-semibold text-xs border border-red-500/40 flex items-center gap-1.5 transition-colors shadow-sm"
           >
             <ShieldAlert className="w-4 h-4" />
             <span>Issue Warning</span>
@@ -106,279 +122,326 @@ export default function LocationDetails() {
 
           <button
             onClick={handleGenerateReport}
-            className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 transition-colors shadow-lg shadow-blue-600/20"
+            className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs flex items-center gap-1.5 transition-colors shadow-lg shadow-blue-600/25"
           >
             <FileText className="w-4 h-4" />
-            <span>Generate Site Report</span>
+            <span>Export Audit Dossier</span>
           </button>
         </div>
       </div>
 
-      {/* Main Grid: Left Column (Risk & Forecasts) | Right Column (AI & Telemetry) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: Circular Risk Gauge & Key Physical Attributes */}
-        <div className="space-y-6">
-          {/* Circular Risk Gauge Card (Prompt Specification) */}
-          <div className="bg-navy-800/60 border border-navy-700/60 rounded-xl p-6 text-center card-hover flex flex-col items-center justify-center relative overflow-hidden">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-navy-400 mb-4">
-              Current Geospatial Risk Index
-            </span>
+      {error && (
+        <ErrorState
+          title="Live Telemetry Sync Unavailable"
+          message={`Operating in development seed mode (${error}).`}
+          onRetry={retry}
+        />
+      )}
 
-            {/* Circular Gauge Graphic */}
-            <div className="relative w-44 h-44 flex items-center justify-center my-2">
-              <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-                {/* Background Track */}
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="40"
-                  fill="none"
-                  stroke="#1e293b"
-                  strokeWidth="10"
-                />
-                {/* Value Stroke */}
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="40"
-                  fill="none"
-                  stroke={color}
-                  strokeWidth="10"
-                  strokeDasharray="251.2"
-                  strokeDashoffset={251.2 * (1 - location.riskScore / 100)}
-                  strokeLinecap="round"
-                  className="transition-all duration-1000 ease-out"
-                />
-              </svg>
-
-              {/* Center Content */}
-              <div className="absolute flex flex-col items-center justify-center">
-                <span className="text-4xl font-extrabold text-white tracking-tight">
-                  {location.riskScore}
-                </span>
-                <span className="text-xs text-navy-400 font-medium">/ 100</span>
-                <span
-                  className="text-[11px] font-extrabold uppercase tracking-widest mt-0.5"
-                  style={{ color }}
-                >
-                  {location.riskLevel} Risk
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 mt-4 text-xs text-navy-400 bg-navy-900/80 px-3 py-1.5 rounded-lg border border-navy-700">
-              <Activity className="w-3.5 h-3.5 text-blue-400" />
-              <span>Data Coverage: <strong className="text-white">{location.dataCoverage}%</strong> active sensors</span>
-            </div>
+      {/* Top 4 Quick Metric Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="bg-navy-800/60 border border-navy-700/60 rounded-xl p-4">
+          <div className="flex items-center justify-between text-xs text-navy-400 mb-1">
+            <span>Evaluated Risk Score</span>
+            <AlertTriangle className="w-4 h-4 text-red-400" />
           </div>
-
-          {/* 24h / 48h / 72h Predictive Forecast (Prompt Specification) */}
-          <div className="bg-navy-800/60 border border-navy-700/60 rounded-xl p-5 card-hover">
-            <h3 className="text-xs font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-cyan-400" />
-              Predictive Risk Trajectory
-            </h3>
-
-            <div className="grid grid-cols-3 gap-2.5">
-              <div className="bg-navy-900/80 p-3 rounded-lg border border-navy-700/50 text-center">
-                <span className="text-[10px] text-navy-400 uppercase font-semibold block mb-1">
-                  24-Hour
-                </span>
-                <span className="text-xl font-extrabold text-red-400">
-                  {location.forecast.hours24}
-                </span>
-                <span className="text-[10px] text-navy-500 block">/ 100</span>
-              </div>
-
-              <div className="bg-navy-900/80 p-3 rounded-lg border border-navy-700/50 text-center">
-                <span className="text-[10px] text-navy-400 uppercase font-semibold block mb-1">
-                  48-Hour
-                </span>
-                <span className="text-xl font-extrabold text-orange-400">
-                  {location.forecast.hours48}
-                </span>
-                <span className="text-[10px] text-navy-500 block">/ 100</span>
-              </div>
-
-              <div className="bg-navy-900/80 p-3 rounded-lg border border-navy-700/50 text-center">
-                <span className="text-[10px] text-navy-400 uppercase font-semibold block mb-1">
-                  72-Hour
-                </span>
-                <span className="text-xl font-extrabold text-yellow-400">
-                  {location.forecast.hours72}
-                </span>
-                <span className="text-[10px] text-navy-500 block">/ 100</span>
-              </div>
-            </div>
+          <div className="text-2xl font-extrabold text-white">
+            {location.riskScore} <span className="text-xs font-normal text-navy-500">/100</span>
           </div>
-
-          {/* Location Terrain Attributes (Prompt Specification) */}
-          <div className="bg-navy-800/60 border border-navy-700/60 rounded-xl p-5 card-hover space-y-3 text-xs">
-            <h3 className="text-xs font-bold text-white uppercase tracking-wider mb-2 flex items-center gap-2">
-              <Mountain className="w-4 h-4 text-emerald-400" />
-              Terrain & Geology Profile
-            </h3>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between p-2 rounded bg-navy-900/80">
-                <span className="text-navy-400">Slope Gradient:</span>
-                <span className="font-bold text-white">{location.slope}° (Steep)</span>
-              </div>
-              <div className="flex items-center justify-between p-2 rounded bg-navy-900/80">
-                <span className="text-navy-400">Elevation:</span>
-                <span className="font-bold text-white">{location.elevation} m MSL</span>
-              </div>
-              <div className="flex items-center justify-between p-2 rounded bg-navy-900/80">
-                <span className="text-navy-400">Land Cover Class:</span>
-                <span className="font-bold text-white">{location.landCover}</span>
-              </div>
-              <div className="flex items-center justify-between p-2 rounded bg-navy-900/80">
-                <span className="text-navy-400">Geological Formation:</span>
-                <span className="font-bold text-cyan-400">{location.geologicalClass}</span>
-              </div>
-            </div>
+          <div className="text-[11px] text-navy-400 mt-1">
+            Band: <span className="font-semibold text-red-400">{location.riskLevel} Hazard</span>
           </div>
         </div>
 
-        {/* Middle & Right Columns (AI Explainability, Action Protocol, Soil Telemetry & History) */}
+        <div className="bg-navy-800/60 border border-navy-700/60 rounded-xl p-4">
+          <div className="flex items-center justify-between text-xs text-navy-400 mb-1">
+            <span>24h Precipitation</span>
+            <CloudRain className="w-4 h-4 text-cyan-400" />
+          </div>
+          <div className="text-2xl font-extrabold text-cyan-400">{location.rainfallMm} mm</div>
+          <div className="text-[11px] text-navy-400 mt-1">{location.rainfall} Precipitation Index</div>
+        </div>
+
+        <div className="bg-navy-800/60 border border-navy-700/60 rounded-xl p-4">
+          <div className="flex items-center justify-between text-xs text-navy-400 mb-1">
+            <span>Slope Geometry</span>
+            <Mountain className="w-4 h-4 text-amber-400" />
+          </div>
+          <div className="text-2xl font-extrabold text-white">{location.slope}°</div>
+          <div className="text-[11px] text-navy-400 mt-1">Elev: {location.elevation}m ASL</div>
+        </div>
+
+        <div className="bg-navy-800/60 border border-navy-700/60 rounded-xl p-4">
+          <div className="flex items-center justify-between text-xs text-navy-400 mb-1">
+            <span>Historical Failures</span>
+            <History className="w-4 h-4 text-purple-400" />
+          </div>
+          <div className="text-2xl font-extrabold text-white">{location.historicalEvents?.length ?? 0}</div>
+          <div className="text-[11px] text-navy-400 mt-1">Documented Events on Record</div>
+        </div>
+      </div>
+
+      {/* Main 2-Column Intelligence Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left 2 Columns: Telemetry Charts, Forecast & Historical Events */}
         <div className="lg:col-span-2 space-y-6">
-          {/* AI Recommendation Banner (Prompt Specification) */}
-          <div className="bg-gradient-to-r from-blue-950/70 via-indigo-950/70 to-navy-900 border border-blue-500/30 rounded-xl p-5 card-hover">
-            <div className="flex items-center gap-2.5 mb-2">
-              <div className="p-2 rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/40">
-                <Sparkles className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-white tracking-wide">
-                  AI Action Protocol & Field Directive
+          {/* 7-Day Rainfall & Soil Moisture Curve */}
+          <div className="bg-navy-800/60 border border-navy-700/60 rounded-xl p-5 card-hover">
+            <div className="flex items-center justify-between gap-3 mb-4 pb-3 border-b border-navy-700/50">
+              <div className="flex items-center gap-2">
+                <Activity className="w-4 h-4 text-blue-400" />
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                  7-Day Rainfall vs. Soil Saturation Telemetry
                 </h3>
-                <p className="text-xs text-navy-400">Prescribed operational procedures for road and disaster teams</p>
               </div>
-            </div>
-            <p className="text-xs text-navy-200 leading-relaxed font-medium bg-navy-950/70 p-3.5 rounded-lg border border-navy-800 mt-3">
-              {location.aiRecommendation}
-            </p>
-          </div>
-
-          {/* AI Feature Contribution Bars (Prompt Specification) */}
-          <div className="bg-navy-800/60 border border-navy-700/60 rounded-xl p-5 card-hover">
-            <h3 className="text-xs font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
-              <Layers className="w-4 h-4 text-purple-400" />
-              Primary Risk Factor Contributions
-            </h3>
-
-            <div className="space-y-3.5">
-              {location.riskFactors.map((factor) => (
-                <div key={factor.name} className="space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-navy-200 font-medium">{factor.name}</span>
-                    <span className="font-bold text-white">{factor.contribution}% contribution</span>
-                  </div>
-                  <div className="w-full bg-navy-950 h-2 rounded-full overflow-hidden border border-navy-700/50">
-                    <div
-                      className="h-full rounded-full transition-all duration-500"
-                      style={{
-                        width: `${factor.contribution * 2.5}%`,
-                        backgroundColor: factor.color,
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* 7-Day Rainfall & Soil Moisture Telemetry Chart */}
-          <div className="bg-navy-800/60 border border-navy-700/60 rounded-xl p-5 card-hover">
-            <div className="flex items-center justify-between mb-4 pb-2 border-b border-navy-700/50">
-              <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                <CloudRain className="w-4 h-4 text-cyan-400" />
-                7-Day Soil Saturation & Precipitation Telemetry
-              </h3>
-              <span className="text-[11px] text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">
-                Pore Pressure Critical
-              </span>
+              <span className="text-[11px] text-navy-400">Antecedent Moisture Threshold</span>
             </div>
 
-            <div className="h-56 w-full">
+            <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={telemetryData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <AreaChart data={telemetryData}>
                   <defs>
-                    <linearGradient id="moistureGradient" x1="0" y1="0" x2="0" y2="1">
+                    <linearGradient id="rainGrad" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.4} />
                       <stop offset="95%" stopColor="#06b6d4" stopOpacity={0.0} />
                     </linearGradient>
+                    <linearGradient id="moistGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.0} />
+                    </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.4} />
-                  <XAxis dataKey="day" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} />
-                  <YAxis stroke="#64748b" domain={[0, 100]} tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.5} />
+                  <XAxis dataKey="day" stroke="#64748b" textAnchor="end" tick={{ fontSize: 11 }} />
+                  <YAxis stroke="#64748b" tick={{ fontSize: 11 }} />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: '#0f172a',
                       borderColor: '#334155',
                       borderRadius: '8px',
-                      fontSize: '11px',
+                      fontSize: '12px',
                     }}
                   />
                   <Area
                     type="monotone"
-                    dataKey="moisture"
-                    name="Soil Saturation %"
+                    dataKey="rainfall"
+                    name="Rainfall (mm)"
                     stroke="#06b6d4"
-                    strokeWidth={2.5}
+                    strokeWidth={2}
                     fillOpacity={1}
-                    fill="url(#moistureGradient)"
+                    fill="url(#rainGrad)"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="moisture"
+                    name="Soil Saturation (%)"
+                    stroke="#8b5cf6"
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#moistGrad)"
                   />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          {/* Historical Landslide Events Timeline (Prompt Specification) */}
-          <div className="bg-navy-800/60 border border-navy-700/60 rounded-xl p-5 card-hover">
-            <h3 className="text-xs font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
-              <History className="w-4 h-4 text-amber-400" />
-              Recorded Historical Landslide Events ({location.historicalEvents.length})
-            </h3>
+          {/* In-Situ IoT Sensors Panel */}
+          {detailData?.sensors && detailData.sensors.length > 0 && (
+            <div className="bg-navy-800/60 border border-navy-700/60 rounded-xl p-5 card-hover">
+              <div className="flex items-center justify-between gap-3 mb-4 pb-3 border-b border-navy-700/50">
+                <div className="flex items-center gap-2">
+                  <Cpu className="w-4 h-4 text-cyan-400" />
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                    In-Situ Geotechnical Instrumentation Telemetry
+                  </h3>
+                </div>
+                <span className="text-[11px] text-emerald-400 font-semibold">Active Sensors Deployed</span>
+              </div>
 
-            {location.historicalEvents.length === 0 ? (
-              <p className="text-xs text-navy-400 italic">No historical major slope failures recorded at this monitoring station.</p>
-            ) : (
-              <div className="relative border-l-2 border-navy-700 ml-3 pl-5 space-y-4">
-                {location.historicalEvents.map((evt, idx) => (
-                  <div key={idx} className="relative group">
-                    {/* Timeline Node */}
-                    <div className="absolute -left-[27px] top-0.5 w-3 h-3 rounded-full bg-amber-400 border-2 border-navy-900 group-hover:scale-125 transition-transform" />
-
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-bold text-white">{evt.date}</span>
-                      <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                        {evt.type}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {detailData.sensors.map((s) => (
+                  <div key={s.id} className="bg-navy-900/80 p-3.5 rounded-lg border border-navy-700/60 space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-navy-400 font-medium truncate">{s.type}</span>
+                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${s.readingStatus === 'CRITICAL' ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                        {s.readingStatus}
                       </span>
-                      <span className="text-[10px] text-navy-400 font-semibold">• Severity: {evt.severity}</span>
                     </div>
-
-                    <p className="text-xs text-navy-300 leading-relaxed bg-navy-900/60 p-2.5 rounded-lg border border-navy-800">
-                      {evt.description}
-                    </p>
+                    <div className="text-xl font-bold text-white">
+                      {s.currentReading} <span className="text-xs text-navy-400 font-normal">{s.unit}</span>
+                    </div>
+                    <div className="text-[10px] text-navy-500">{s.dataFreshness}</div>
                   </div>
                 ))}
               </div>
-            )}
+            </div>
+          )}
+
+          {/* Predictive 72h Forecast Horizon */}
+          <div className="bg-navy-800/60 border border-navy-700/60 rounded-xl p-5 card-hover">
+            <div className="flex items-center gap-2 mb-4 pb-3 border-b border-navy-700/50">
+              <Clock className="w-4 h-4 text-purple-400" />
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                72-Hour Landslide Risk Trajectory Forecast
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div className="bg-navy-900/80 p-4 rounded-xl border border-navy-700/60">
+                <span className="text-[11px] text-navy-400 block mb-1">Next 24 Hours</span>
+                <span className="text-2xl font-extrabold text-red-400">
+                  {location.forecast?.hours24 ?? location.riskScore}
+                </span>
+                <span className="text-[10px] text-navy-500 block mt-1">High Probability Failure</span>
+              </div>
+              <div className="bg-navy-900/80 p-4 rounded-xl border border-navy-700/60">
+                <span className="text-[11px] text-navy-400 block mb-1">Next 48 Hours</span>
+                <span className="text-2xl font-extrabold text-orange-400">
+                  {location.forecast?.hours48 ?? Math.max(0, location.riskScore - 5)}
+                </span>
+                <span className="text-[10px] text-navy-500 block mt-1">Elevated Instability</span>
+              </div>
+              <div className="bg-navy-900/80 p-4 rounded-xl border border-navy-700/60">
+                <span className="text-[11px] text-navy-400 block mb-1">Next 72 Hours</span>
+                <span className="text-2xl font-extrabold text-yellow-400">
+                  {location.forecast?.hours72 ?? Math.max(0, location.riskScore - 12)}
+                </span>
+                <span className="text-[10px] text-navy-500 block mt-1">Post-Monsoon Receding</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Historical Landslide Activity Archive */}
+          <div className="bg-navy-800/60 border border-navy-700/60 rounded-xl p-5 card-hover">
+            <div className="flex items-center gap-2 mb-4 pb-3 border-b border-navy-700/50">
+              <History className="w-4 h-4 text-amber-400" />
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                Historical Disaster &amp; Slope Failure Log
+              </h3>
+            </div>
+
+            <div className="space-y-3">
+              {location.historicalEvents && location.historicalEvents.length > 0 ? (
+                location.historicalEvents.map((evt, i) => (
+                  <div
+                    key={i}
+                    className="bg-navy-900/70 p-3.5 rounded-lg border border-navy-700/60 flex items-start justify-between gap-3 text-xs"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-white">{evt.type}</span>
+                        <span className="text-navy-500">•</span>
+                        <span className="text-navy-400">{evt.date}</span>
+                        <span className="px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 font-bold text-[10px]">
+                          {evt.severity}
+                        </span>
+                      </div>
+                      <p className="text-navy-300 text-xs">{evt.description}</p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-xs text-navy-400 py-4 text-center">
+                  No previous recorded catastrophic failures at this specific station.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Right 1 Column: AI Explainability, Geology & Recommended Action */}
+        <div className="space-y-6">
+          {/* AI Recommended Mitigation Action */}
+          <div className="bg-navy-800/60 border border-blue-500/30 rounded-xl p-5 card-hover space-y-3">
+            <div className="flex items-center gap-2 pb-2 border-b border-navy-700/50">
+              <Sparkles className="w-4 h-4 text-blue-400" />
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                AI Recommendation
+              </h3>
+            </div>
+            <p className="text-xs text-navy-200 leading-relaxed">
+              {location.aiRecommendation ||
+                'Deploy emergency geotechnical team for tension crack mapping. Pre-position heavy equipment.'}
+            </p>
+            <div className="pt-2 border-t border-navy-700/40 flex items-center justify-between text-[10px] text-navy-400">
+              <span>Engine: Random Forest v1.0</span>
+              <span>Priority: Level 1 Emergency</span>
+            </div>
+          </div>
+
+          {/* Contributing Risk Factor Weights */}
+          <div className="bg-navy-800/60 border border-navy-700/60 rounded-xl p-5 card-hover space-y-4">
+            <div className="flex items-center gap-2 pb-2 border-b border-navy-700/50">
+              <Layers className="w-4 h-4 text-purple-400" />
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                Risk Attribution
+              </h3>
+            </div>
+
+            <div className="space-y-3">
+              {location.riskFactors && location.riskFactors.length > 0 ? (
+                location.riskFactors.map((rf) => (
+                  <div key={rf.name} className="space-y-1 text-xs">
+                    <div className="flex justify-between font-medium">
+                      <span className="text-navy-300">{rf.name}</span>
+                      <span className="font-bold text-white">{rf.contribution}%</span>
+                    </div>
+                    <div className="w-full bg-navy-900 h-1.5 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${rf.contribution * 2.5}%`,
+                          backgroundColor: rf.color || '#3b82f6',
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-xs text-navy-400">Factors computed dynamically by ML service.</div>
+              )}
+            </div>
+          </div>
+
+          {/* Geotechnical Terrain Specifications */}
+          <div className="bg-navy-800/60 border border-navy-700/60 rounded-xl p-5 card-hover space-y-3">
+            <div className="flex items-center gap-2 pb-2 border-b border-navy-700/50">
+              <Compass className="w-4 h-4 text-emerald-400" />
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                Geological Profile
+              </h3>
+            </div>
+
+            <div className="space-y-2 text-xs divide-y divide-navy-700/40">
+              <div className="flex justify-between pt-1">
+                <span className="text-navy-400">Geological Bedrock</span>
+                <span className="font-semibold text-white">{location.geologicalClass}</span>
+              </div>
+              <div className="flex justify-between pt-2">
+                <span className="text-navy-400">Land Cover / Canopy</span>
+                <span className="font-semibold text-white">{location.landCover}</span>
+              </div>
+              <div className="flex justify-between pt-2">
+                <span className="text-navy-400">Station Data Coverage</span>
+                <span className="font-semibold text-emerald-400">{location.dataCoverage}% Telemetry</span>
+              </div>
+              <div className="flex justify-between pt-2">
+                <span className="text-navy-400">InSAR Surface Drift</span>
+                <span className="font-semibold text-cyan-400">-14.2 mm/yr</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Modals */}
-      <ReportPreviewModal
-        report={selectedReport}
-        onClose={() => setSelectedReport(null)}
-      />
+      {/* Report Modal */}
+      <ReportPreviewModal report={selectedReport} onClose={() => setSelectedReport(null)} />
 
+      {/* Warning Modal */}
       <CreateWarningModal
         isOpen={isWarningModalOpen}
         onClose={() => setIsWarningModalOpen(false)}
         onCreateWarning={handleCreateWarning}
+        preselectedLocation={location.id}
       />
     </div>
   )

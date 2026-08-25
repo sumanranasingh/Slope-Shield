@@ -181,7 +181,7 @@ export default function LiveRiskMap({
           center={neCenter}
           zoom={compact ? 6.5 : 7}
           zoomControl={false}
-          scrollWheelZoom={true}
+          scrollWheelZoom={false}
           className="w-full h-full"
         >
           <ZoomControl position="bottomright" />

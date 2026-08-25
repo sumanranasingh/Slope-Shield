@@ -7,14 +7,16 @@ interface CreateWarningModalProps {
   isOpen: boolean
   onClose: () => void
   onCreateWarning: (warning: WarningData) => void
+  preselectedLocation?: string
 }
 
 export default function CreateWarningModal({
   isOpen,
   onClose,
   onCreateWarning,
+  preselectedLocation,
 }: CreateWarningModalProps) {
-  const [locationId, setLocationId] = useState(locations[0].id)
+  const [locationId, setLocationId] = useState(preselectedLocation || locations[0].id)
   const [severity, setSeverity] = useState<'Critical' | 'High' | 'Moderate' | 'Low'>('High')
   const [trigger, setTrigger] = useState('Heavy rainfall + steep slope saturation')
   const [message, setMessage] = useState('Elevated landslide risk detected following sustained rainfall. Precautionary protocols initiated.')

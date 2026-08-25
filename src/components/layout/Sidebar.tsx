@@ -14,6 +14,9 @@ import {
   Shield,
   X,
   User,
+  Compass,
+  Camera,
+  ShieldAlert,
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -21,15 +24,33 @@ interface SidebarProps {
   onClose: () => void
 }
 
-const navItems = [
-  { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/risk-map', icon: Map, label: 'Risk Map' },
-  { to: '/early-warnings', icon: AlertTriangle, label: 'Early Warnings' },
-  { to: '/locations', icon: MapPin, label: 'Locations' },
-  { to: '/reports', icon: FileText, label: 'Reports' },
-  { to: '/analytics', icon: BarChart3, label: 'Analytics' },
-  { to: '/satellite', icon: Satellite, label: 'Satellite Monitoring' },
-  { to: '/settings', icon: Settings, label: 'Settings' },
+const navSections = [
+  {
+    title: 'Operations',
+    items: [
+      { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
+      { to: '/risk-map', icon: Map, label: 'Risk Map' },
+      { to: '/early-warnings', icon: AlertTriangle, label: 'Early Warnings' },
+      { to: '/incidents', icon: ShieldAlert, label: 'Incidents' },
+    ],
+  },
+  {
+    title: 'Intelligence',
+    items: [
+      { to: '/locations', icon: MapPin, label: 'Locations' },
+      { to: '/roads', icon: Compass, label: 'Roads & Infra' },
+      { to: '/satellite', icon: Satellite, label: 'Satellite Lab' },
+      { to: '/analytics', icon: BarChart3, label: 'Analytics' },
+    ],
+  },
+  {
+    title: 'Data & Config',
+    items: [
+      { to: '/reports', icon: FileText, label: 'Reports' },
+      { to: '/citizen-reports', icon: Camera, label: 'Field Reports' },
+      { to: '/settings', icon: Settings, label: 'Settings' },
+    ],
+  },
 ]
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
@@ -83,26 +104,37 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              onClick={onClose}
-              end={item.to === '/'}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200
-                ${isActive
-                  ? 'bg-blue-500/15 text-blue-400 border border-blue-500/20'
-                  : 'text-navy-400 hover:text-white hover:bg-navy-800/60 border border-transparent'
-                }
-                ${collapsed ? 'justify-center' : ''}
-                `
-              }
-            >
-              <item.icon className="w-[18px] h-[18px] flex-shrink-0" />
-              {!collapsed && <span>{item.label}</span>}
-            </NavLink>
+        <nav className="flex-1 py-3 px-3 space-y-4 overflow-y-auto">
+          {navSections.map((section) => (
+            <div key={section.title}>
+              {!collapsed && (
+                <p className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-widest text-navy-600">
+                  {section.title}
+                </p>
+              )}
+              <div className="space-y-0.5">
+                {section.items.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    onClick={onClose}
+                    end={item.to === '/'}
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200
+                      ${isActive
+                        ? 'bg-blue-500/15 text-blue-400 border border-blue-500/20'
+                        : 'text-navy-400 hover:text-white hover:bg-navy-800/60 border border-transparent'
+                      }
+                      ${collapsed ? 'justify-center' : ''}
+                      `
+                    }
+                  >
+                    <item.icon className="w-[18px] h-[18px] flex-shrink-0" />
+                    {!collapsed && <span>{item.label}</span>}
+                  </NavLink>
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
 

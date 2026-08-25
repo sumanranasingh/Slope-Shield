@@ -1,0 +1,36 @@
+version: "3.8"
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://slopeshield:slopeshield@db:5432/slopeshield
+      - DATABASE_URL_SYNC=postgresql://slopeshield:slopeshield@db:5432/slopeshield
+      - CORS_ORIGINS=http://localhost:5173,http://localhost:3000
+    depends_on:
+      - db
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: slopeshield
+      POSTGRES_PASSWORD: slopeshield
+      POSTGRES_DB: slopeshield
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  frontend:
+    build: .
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000/api
+    command: npm run dev -- --host
+
+volumes:
+  pgdata:

@@ -100,7 +100,7 @@ export default function SatellitePreviewCard() {
                 )}
 
                 <div className="absolute top-2 right-2 bg-red-950/80 backdrop-blur-sm border border-red-500/40 px-2 py-0.5 rounded text-[10px] font-bold text-red-300 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-ping" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
                   Current (24 Aug 2026)
                 </div>
                 <div className="absolute bottom-2 right-2 text-[10px] text-red-400 font-mono">

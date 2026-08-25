@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Settings as SettingsIcon,
   Sliders,
@@ -13,11 +13,16 @@ import {
   Code,
   Bell,
   Save,
+  Radio,
+  RefreshCw,
+  Server,
 } from 'lucide-react'
+import { isApiAvailable, API_BASE } from '../services/api'
+import DataSourceBadge from '../components/common/DataSourceBadge'
 
 export default function Settings() {
-  const [criticalThreshold, setCriticalThreshold] = useState(85)
-  const [highThreshold, setHighThreshold] = useState(68)
+  const [criticalThreshold, setCriticalThreshold] = useState(80)
+  const [highThreshold, setHighThreshold] = useState(60)
   const [rainfallTrigger, setRainfallTrigger] = useState(140)
   const [soilMoistureThreshold, setSoilMoistureThreshold] = useState(80)
   const [smsBroadcasting, setSmsBroadcasting] = useState(true)
@@ -25,7 +30,27 @@ export default function Settings() {
   const [saved, setSaved] = useState(false)
   const [copiedKey, setCopiedKey] = useState(false)
 
+  // Backend Health Ping State
+  const [apiConnected, setApiConnected] = useState<boolean | null>(null)
+  const [checkingApi, setCheckingApi] = useState(false)
+
   const apiKey = 'sk_live_slopeshield_ner_883912049182374'
+
+  const checkConnection = async () => {
+    setCheckingApi(true)
+    try {
+      const ok = await isApiAvailable()
+      setApiConnected(ok)
+    } catch {
+      setApiConnected(false)
+    } finally {
+      setCheckingApi(false)
+    }
+  }
+
+  useEffect(() => {
+    checkConnection()
+  }, [])
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault()
@@ -50,22 +75,25 @@ export default function Settings() {
             </div>
             <div>
               <h1 className="text-xl font-bold text-white tracking-tight">
-                Platform Configuration & Enterprise Settings
+                Platform Configuration &amp; Enterprise Settings
               </h1>
               <p className="text-xs text-navy-400">
-                Manage risk thresholds, B2B Geospatial APIs, alert routing & subscription tier
+                Manage risk thresholds, B2B Geospatial APIs, alert routing &amp; telemetry parameters
               </p>
             </div>
           </div>
         </div>
 
-        <button
-          onClick={handleSave}
-          className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-lg shadow-blue-600/25 self-start sm:self-center"
-        >
-          <Save className="w-4 h-4" />
-          <span>{saved ? 'Settings Saved!' : 'Save Configuration'}</span>
-        </button>
+        <div className="flex items-center gap-3 self-start sm:self-center">
+          <DataSourceBadge source="DEMO" provider="Platform Operations Service" />
+          <button
+            onClick={handleSave}
+            className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-lg shadow-blue-600/25"
+          >
+            <Save className="w-4 h-4" />
+            <span>{saved ? 'Settings Saved!' : 'Save Configuration'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Settings Grid */}
@@ -77,7 +105,7 @@ export default function Settings() {
             <div className="flex items-center gap-2 pb-3 border-b border-navy-700/50">
               <Sliders className="w-4 h-4 text-blue-400" />
               <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                Automated Risk & Early Warning Thresholds
+                Automated Risk &amp; Early Warning Thresholds
               </h3>
             </div>
 
@@ -96,7 +124,7 @@ export default function Settings() {
                   className="w-full h-1.5 bg-navy-950 rounded-lg appearance-none cursor-pointer accent-red-500"
                 />
                 <span className="text-[10px] text-navy-500 block mt-1">
-                  Scores equal or above {criticalThreshold} trigger mandatory evacuation recommendations & CAP broadcasts.
+                  Scores equal or above {criticalThreshold} trigger mandatory evacuation recommendations &amp; CAP broadcasts.
                 </span>
               </div>
 
@@ -135,7 +163,7 @@ export default function Settings() {
 
               <div>
                 <div className="flex items-center justify-between mb-1.5 font-semibold">
-                  <span className="text-purple-400">Pore Pressure / Soil Moisture Saturation Limit:</span>
+                  <span className="text-purple-400">Soil Moisture Saturation Limit:</span>
                   <span className="text-white font-bold">{soilMoistureThreshold}%</span>
                 </div>
                 <input
@@ -150,115 +178,99 @@ export default function Settings() {
             </div>
           </div>
 
-          {/* 2. B2B / B2G Geospatial Risk Data API (Prompt Specification) */}
+          {/* 2. Developer & Geospatial B2B API */}
           <div className="bg-navy-800/60 border border-navy-700/60 rounded-xl p-5 card-hover space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-navy-700/50">
               <div className="flex items-center gap-2">
-                <Code className="w-4 h-4 text-purple-400" />
+                <Key className="w-4 h-4 text-emerald-400" />
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                  B2B / B2G Geospatial Risk API
+                  B2B Geospatial &amp; Risk Prediction API
                 </h3>
               </div>
-              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                Active Tier
+              <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 font-bold uppercase">
+                Active Key
               </span>
             </div>
 
             <p className="text-xs text-navy-300">
-              Query real-time landslide susceptibility and early warning status directly into external GIS systems, road dispatch softwares, or insurance catastrophe modeling engines.
+              Embed live landslide risk intelligence, corridor hazard ratings, and CAP notifications directly into external emergency management GIS.
             </p>
 
-            {/* API Key */}
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <label className="text-[11px] font-semibold text-navy-400 uppercase tracking-wider block">
-                Production Live Secret Key
+                Production API Secret Key
               </label>
               <div className="flex items-center gap-2">
                 <input
                   type="password"
-                  readOnly
                   value={apiKey}
-                  className="w-full bg-navy-950 border border-navy-700 rounded-lg px-3 py-2 text-xs font-mono text-white focus:outline-none"
+                  readOnly
+                  className="w-full bg-navy-900 border border-navy-700 rounded-lg px-3 py-2 text-xs font-mono text-white focus:outline-none"
                 />
                 <button
                   onClick={copyApiKey}
-                  className="px-3 py-2 rounded-lg bg-navy-900 hover:bg-navy-700 text-navy-200 border border-navy-700 text-xs font-semibold flex items-center gap-1 transition-colors whitespace-nowrap"
+                  className="px-3 py-2 bg-navy-700 hover:bg-navy-600 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors flex-shrink-0"
                 >
-                  <Copy className="w-3.5 h-3.5" />
-                  <span>{copiedKey ? 'Copied!' : 'Copy Key'}</span>
+                  {copiedKey ? <CheckCircle className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                  <span>{copiedKey ? 'Copied' : 'Copy'}</span>
                 </button>
               </div>
             </div>
 
-            {/* Code Snippet Example (Prompt Specification) */}
-            <div className="space-y-1.5 pt-2">
-              <span className="text-[11px] font-semibold text-navy-400 uppercase tracking-wider block">
-                Endpoint Sample: GET /risk
-              </span>
-              <div className="bg-navy-950 p-3.5 rounded-lg border border-navy-800 font-mono text-[11px] text-cyan-300 overflow-x-auto space-y-2">
-                <div className="text-slate-400">
-                  curl -X GET "https://api.slopeshield.ai/v1/risk?lat=28.6900&lon=95.7400" \<br />
-                  &nbsp;&nbsp;-H "Authorization: Bearer {apiKey.slice(0, 14)}..."
-                </div>
-                <div className="text-slate-500 pt-1 border-t border-navy-800">
-                  // JSON Response Payload:
-                </div>
-                <pre className="text-emerald-400">
-{`{
-  "risk_score": 91,
-  "risk_level": "CRITICAL",
-  "rainfall_risk": "VERY_HEAVY",
-  "landslide_probability": 0.88,
-  "recommended_action": "Immediate field assessment",
-  "station": "Dibang Valley Sector",
-  "timestamp": "2026-08-24T15:45:00Z"
-}`}
-                </pre>
-              </div>
+            {/* Quick Curl Snippet */}
+            <div className="bg-navy-950 p-3 rounded-lg border border-navy-800 text-[11px] font-mono text-cyan-300 overflow-x-auto">
+              <code>
+                curl -X POST "{API_BASE}/predict-risk" \<br />
+                &nbsp;&nbsp;-H "Content-Type: application/json" \<br />
+                &nbsp;&nbsp;-d '{'{"location_id":"loc-001","rainfall_24h":120.5,"slope_degree":38}'}'
+              </code>
             </div>
           </div>
         </div>
 
-        {/* Right Column: Subscription Tier, Alert Channels & Access */}
+        {/* Right 1 Column: Backend Health & System Status */}
         <div className="space-y-6">
-          {/* Subscription & Commercial Tier */}
-          <div className="bg-gradient-to-br from-navy-800/80 to-navy-900 border border-navy-700/60 rounded-xl p-5 card-hover space-y-4">
+          {/* Backend Diagnostics */}
+          <div className="bg-navy-800/60 border border-navy-700/60 rounded-xl p-5 card-hover space-y-4 text-xs">
             <div className="flex items-center justify-between pb-3 border-b border-navy-700/50">
               <div className="flex items-center gap-2">
-                <CreditCard className="w-4 h-4 text-blue-400" />
-                <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-                  Subscription & Plan
+                <Server className="w-4 h-4 text-blue-400" />
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                  Backend Service Health
                 </h3>
               </div>
-              <span className="text-[10px] font-bold uppercase bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded border border-blue-500/30">
-                Government State Tier
-              </span>
+              <button
+                onClick={checkConnection}
+                disabled={checkingApi}
+                className="p-1 rounded text-navy-400 hover:text-white transition-colors"
+                title="Ping Backend Service"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${checkingApi ? 'animate-spin' : ''}`} />
+              </button>
             </div>
 
-            <div className="space-y-3 text-xs">
-              <div className="bg-navy-950 p-3 rounded-lg border border-navy-800 space-y-1">
-                <span className="text-[10px] text-navy-400 uppercase font-semibold">Active Plan</span>
-                <div className="text-base font-bold text-white">Northeast India Regional Suite</div>
-                <div className="text-emerald-400 font-semibold text-xs">₹45,00,000 / year (Annual SaaS)</div>
+            <div className="space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-navy-400">Endpoint:</span>
+                <span className="font-mono text-[11px] text-navy-200">{API_BASE}</span>
               </div>
-
-              <div className="space-y-2 pt-1 text-navy-300">
-                <div className="flex items-center justify-between">
-                  <span>Monitored Locations:</span>
-                  <strong className="text-white">247 Stations (Unlimited)</strong>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Highway Corridors:</span>
-                  <strong className="text-white">342 Monitored km</strong>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>InSAR Satellite Passes:</span>
-                  <strong className="text-white">Daily Multi-Orbit</strong>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>CAP Emergency Broadcast:</span>
-                  <strong className="text-emerald-400">Enabled</strong>
-                </div>
+              <div className="flex items-center justify-between">
+                <span className="text-navy-400">Status:</span>
+                <span
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                    apiConnected
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      : apiConnected === false
+                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                      : 'bg-navy-700 text-navy-300'
+                  }`}
+                >
+                  {apiConnected ? 'FASTAPI CONNECTED' : apiConnected === false ? 'DEVELOPMENT SEED' : 'CHECKING...'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-navy-400">Risk Model:</span>
+                <span className="font-semibold text-white">Random Forest (rf-ner-v1.0)</span>
               </div>
             </div>
           </div>
@@ -288,7 +300,7 @@ export default function Settings() {
 
               <label className="flex items-center justify-between p-2.5 rounded-lg bg-navy-900/80 cursor-pointer">
                 <div>
-                  <span className="font-semibold text-white block">SMS & WhatsApp Gateway</span>
+                  <span className="font-semibold text-white block">SMS &amp; Dispatch Gateway</span>
                   <span className="text-[10px] text-navy-400">Immediate dispatches to BRO engineers</span>
                 </div>
                 <input

@@ -185,8 +185,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
             className="p-2 text-navy-400 hover:text-white rounded-lg hover:bg-navy-800 transition-colors relative"
           >
             <Bell className="w-5 h-5" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full animate-ping" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-navy-900" />
           </button>
 
           {showNotifications && (

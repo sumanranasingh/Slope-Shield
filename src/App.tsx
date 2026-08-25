@@ -9,6 +9,9 @@ import Reports from './pages/Reports'
 import Analytics from './pages/Analytics'
 import SatelliteMonitoring from './pages/SatelliteMonitoring'
 import Settings from './pages/Settings'
+import Roads from './pages/Roads'
+import CitizenReports from './pages/CitizenReports'
+import IncidentManagement from './pages/IncidentManagement'
 
 function App() {
   return (
@@ -19,7 +22,10 @@ function App() {
         <Route path="/early-warnings" element={<EarlyWarnings />} />
         <Route path="/locations" element={<Locations />} />
         <Route path="/locations/:id" element={<LocationDetails />} />
+        <Route path="/roads" element={<Roads />} />
         <Route path="/reports" element={<Reports />} />
+        <Route path="/citizen-reports" element={<CitizenReports />} />
+        <Route path="/incidents" element={<IncidentManagement />} />
         <Route path="/analytics" element={<Analytics />} />
         <Route path="/satellite" element={<SatelliteMonitoring />} />
         <Route path="/settings" element={<Settings />} />

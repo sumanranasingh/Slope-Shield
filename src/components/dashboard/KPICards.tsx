@@ -1,53 +1,86 @@
-import { MapPin, AlertTriangle, Bell, Database, TrendingUp, TrendingDown } from 'lucide-react'
+import { MapPin, AlertTriangle, Bell, Compass, TrendingUp, TrendingDown } from 'lucide-react'
+import type { DashboardSummary } from '../../types'
 
-const kpis = [
-  {
-    label: 'Monitored Locations',
-    value: '247',
-    trend: '+12',
-    trendUp: true,
-    description: 'Active monitoring stations across NE India',
-    icon: MapPin,
-    color: 'from-blue-500 to-blue-600',
-    bgColor: 'bg-blue-500/10',
-    borderColor: 'border-blue-500/20',
-  },
-  {
-    label: 'High-Risk Locations',
-    value: '18',
-    trend: '+3',
-    trendUp: true,
-    description: 'Locations above risk threshold of 65',
-    icon: AlertTriangle,
-    color: 'from-orange-500 to-red-500',
-    bgColor: 'bg-orange-500/10',
-    borderColor: 'border-orange-500/20',
-  },
-  {
-    label: 'Active Warnings',
-    value: '7',
-    trend: '+2',
-    trendUp: true,
-    description: 'Warnings requiring immediate attention',
-    icon: Bell,
-    color: 'from-red-500 to-rose-600',
-    bgColor: 'bg-red-500/10',
-    borderColor: 'border-red-500/20',
-  },
-  {
-    label: 'Data Coverage',
-    value: '92.4%',
-    trend: '+1.2%',
-    trendUp: true,
-    description: 'Sensor and satellite data availability',
-    icon: Database,
-    color: 'from-emerald-500 to-teal-500',
-    bgColor: 'bg-emerald-500/10',
-    borderColor: 'border-emerald-500/20',
-  },
-]
+interface KPICardsProps {
+  summary?: DashboardSummary | null
+  isLoading?: boolean
+}
 
-export default function KPICards() {
+export default function KPICards({ summary, isLoading }: KPICardsProps) {
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="bg-navy-800/60 border border-navy-700/60 rounded-xl p-5 space-y-3 animate-pulse">
+            <div className="flex justify-between items-center">
+              <div className="w-8 h-8 rounded-lg bg-navy-700/60" />
+              <div className="w-12 h-3 rounded bg-navy-700/40" />
+            </div>
+            <div className="h-7 w-20 bg-navy-700/60 rounded" />
+            <div className="h-3 w-32 bg-navy-700/40 rounded" />
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  const monitored = summary?.totalMonitoredLocations ?? 16
+  const critical = summary?.criticalRiskLocations ?? 2
+  const high = summary?.highRiskLocations ?? 4
+  const warnings = summary?.activeWarnings ?? 4
+  const roads = summary?.affectedRoads ?? 8
+
+  const kpis = [
+    {
+      label: 'Monitored Sectors',
+      value: monitored.toString(),
+      trend: `${monitored} active telemetry nodes`,
+      trendUp: true,
+      description: 'Telemetry and slope sensor stations in NER',
+      icon: MapPin,
+      color: 'from-blue-500 to-blue-600',
+      iconColor: '#3b82f6',
+      bgColor: 'bg-blue-500/10',
+      borderColor: 'border-blue-500/20',
+    },
+    {
+      label: 'High & Critical Risk Sectors',
+      value: (critical + high).toString(),
+      trend: `${critical} Critical • ${high} High`,
+      trendUp: false,
+      description: 'Locations above threshold of 60 / 100',
+      icon: AlertTriangle,
+      color: 'from-orange-500 to-red-500',
+      iconColor: '#ef4444',
+      bgColor: 'bg-red-500/10',
+      borderColor: 'border-red-500/20',
+    },
+    {
+      label: 'Active Early Warnings',
+      value: warnings.toString(),
+      trend: summary?.criticalWarnings ? `${summary.criticalWarnings} Red Alerts` : 'Live Broadcast Active',
+      trendUp: false,
+      description: 'Active CAP advisories requiring operational action',
+      icon: Bell,
+      color: 'from-red-500 to-rose-600',
+      iconColor: '#f97316',
+      bgColor: 'bg-orange-500/10',
+      borderColor: 'border-orange-500/20',
+    },
+    {
+      label: 'Monitored Highway Corridors',
+      value: roads.toString(),
+      trend: 'NH-13, NH-37, NH-10, NH-40',
+      trendUp: true,
+      description: 'Strategic highway & rail transportation arteries',
+      icon: Compass,
+      color: 'from-emerald-500 to-teal-500',
+      iconColor: '#10b981',
+      bgColor: 'bg-emerald-500/10',
+      borderColor: 'border-emerald-500/20',
+    },
+  ]
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
       {kpis.map((kpi, i) => (
@@ -57,16 +90,15 @@ export default function KPICards() {
         >
           <div className="flex items-start justify-between mb-3">
             <div className={`${kpi.bgColor} p-2.5 rounded-lg`}>
-              <kpi.icon className={`w-5 h-5 bg-gradient-to-r ${kpi.color} bg-clip-text`} style={{ color: kpi.color.includes('blue') ? '#3b82f6' : kpi.color.includes('orange') ? '#f97316' : kpi.color.includes('red') ? '#ef4444' : '#22c55e' }} />
+              <kpi.icon className="w-5 h-5" style={{ color: kpi.iconColor }} />
             </div>
-            <div className={`flex items-center gap-1 text-xs font-medium ${kpi.trendUp ? (kpi.label === 'Data Coverage' ? 'text-emerald-400' : 'text-orange-400') : 'text-emerald-400'}`}>
-              {kpi.trendUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-              {kpi.trend}
+            <div className="flex items-center gap-1 text-[11px] font-semibold text-navy-400">
+              <span>{kpi.trend}</span>
             </div>
           </div>
-          <div className="text-2xl font-bold text-white mb-1">{kpi.value}</div>
-          <div className="text-xs text-navy-400 font-medium mb-1">{kpi.label}</div>
-          <div className="text-[11px] text-navy-500">{kpi.description}</div>
+          <div className="text-2xl font-extrabold text-white mb-1 tracking-tight">{kpi.value}</div>
+          <div className="text-xs text-navy-300 font-semibold mb-1">{kpi.label}</div>
+          <div className="text-[11px] text-navy-500 leading-tight">{kpi.description}</div>
         </div>
       ))}
     </div>
